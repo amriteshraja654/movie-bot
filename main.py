@@ -80,5 +80,13 @@ async def download_media(client, message):
 if __name__ == "__main__":
     print("🚀 वेब सर्वर और बॉट शुरू हो रहे हैं...")
     keep_alive()
-    bot.run()
+    
+    # इवेंट लूप कॉन्फ्लिक्ट को पूरी तरह ठीक करने का सही तरीका
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(bot.start())
+    
+    import time
+    while True:
+        time.sleep(1)
+        
     
