@@ -90,10 +90,6 @@ async def download_and_send_video(client, message):
             os.remove(file_path)
             if __name__ == "__main__":
     print("🚀 वेब सर्वर और बॉट शुरू हो रहे हैं...")
-    
-    # Flask सर्वर को चालू रखना
     keep_alive()
-    
-    # Pyrogram बॉट चलाना
     bot.run()
     
