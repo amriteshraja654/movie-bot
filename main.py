@@ -88,13 +88,12 @@ async def download_and_send_video(client, message):
         )
         if os.path.exists(file_path):
             os.remove(file_path)
-if __name__ == "__main__":
+            if __name__ == "__main__":
     print("🚀 वेब सर्वर और बॉट शुरू हो रहे हैं...")
+    
+    # Flask सर्वर को चालू रखना
     keep_alive()
     
-    # Render के लिए पोर्ट सेट करना
-    port = int(os.environ.get("PORT", 5000))
-    app_flask.run(host="0.0.0.0", port=port)
-    
+    # Pyrogram बॉट चलाना
     bot.run()
     
