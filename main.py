@@ -1,6 +1,6 @@
 import asyncio
 
-# Python 3.11+ के लिए इवेंट लूप सेटअप
+# Python 3.11+ ke liye event loop setup
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
 
@@ -10,7 +10,7 @@ import yt_dlp
 from flask import Flask
 from threading import Thread
 
-# 1. Flask वेब सर्वर (Render को Live रखने के लिए)
+# 1. Flask web server (Render ko live rakhne ke liye)
 app = Flask(__name__)
 
 @app.route('/')
@@ -26,7 +26,7 @@ def keep_alive():
     t.daemon = True
     t.start()
 
-# 2. Telegram Bot कॉन्फ़िगरेशन
+# 2. Telegram Bot configuration
 API_ID = int(os.environ.get("API_ID", 0))
 API_HASH = os.environ.get("API_HASH", "")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
@@ -41,18 +41,20 @@ bot = Client(
 
 @bot.on_message(filters.command("start"))
 async def start_command(client, message):
-    await message.reply_text("👋 नमस्ते! Vegamovies या किसी भी अन्य वेबसाइट से मूवी का **डायरेक्ट डाउनलोड लिंक** भेजें, मैं उसे डाउनलोड करके फाइल में सेव करूँगा और आपको भेज दूंगा।")
+    await message.reply_text("👋 Namaste! Aap kisi bhi Bollywood, Hollywood, Bhojpuri movie ya Web Series ka naam likhkar bhejein, main usey dhoondhakar aapke paas bhej dunga.")
 
 @bot.on_message(filters.text & ~filters.command("start"))
 async def download_media(client, message):
-    url = message.text.strip()
+    user_input = message.text.strip()
     
-    # चेक करें कि यूजर ने सही लिंक भेजा है या नहीं
-    if not url.startswith(("http://", "https://")):
-        await message.reply_text("⚠️ कृपया केवल किसी वेबसाइट का **वैध डायरेक्ट लिंक (URL)** भेजें (नाम न लिखें)!")
-        return
-
-    status_msg = await message.reply_text(f"⏳ लिंक से मूवी/वीडियो डाउनलोड किया जा रहा है, कृपया प्रतीक्षा करें...")
+    # Check karein ki link hai ya movie ka naam
+    if user_input.startswith(("http://", "https://")):
+        target = user_input
+        status_msg = await message.reply_text(f"⏳ Diye gaye link se download kiya ja raha hai...")
+    else:
+        # Naam se search karne ke liye smart query
+        target = f"ytsearch1:{user_input} full movie OR official trailer"
+        status_msg = await message.reply_text(f"🔍 '{user_input}' ko khoja aur download kiya ja raha hai...")
     
     file_path = None
     try:
@@ -63,22 +65,29 @@ async def download_media(client, message):
             'outtmpl': 'downloads/%(title)s.%(ext)s',
             'quiet': True,
             'noplaylist': True,
-            'geo_bypass': True
+            'geo_bypass': True,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web']
+                }
+            }
         }
         
         def run_ydl():
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=True)
+                info = ydl.extract_info(target, download=True)
                 if 'entries' in info:
+                    if not info['entries']:
+                        raise Exception("Koi video nahi mila.")
                     info = info['entries'][0]
                 return ydl.prepare_filename(info)
 
-        # बैकग्राउंड में फाइल डाउनलोड होगी
+        # Background mein file download hogi
         file_path = await asyncio.to_thread(run_ydl)
 
-        await status_msg.edit_text("📤 डाउनलोड पूरा हो गया है, अब टेलीग्राम पर फाइल भेज रहा हूँ...")
+        await status_msg.edit_text("📤 Download pura ho gaya hai, ab Telegram par file bhej raha hoon...")
 
-        # टेलीग्राम पर वीडियो/फाइल के रूप में भेजना
+        # Telegram par video bhejna
         await client.send_video(
             chat_id=message.chat.id,
             video=file_path,
@@ -87,15 +96,15 @@ async def download_media(client, message):
         await status_msg.delete()
 
     except Exception as e:
-        await status_msg.edit_text(f"❌ डाउनलोड करने में समस्या आई:\n{e}")
+        await status_msg.edit_text(f"❌ Download karne mein samasya aayi:\n{e}")
     finally:
-        # सर्वर पर स्पेस खाली रखने के लिए लोकल फाइल हटा देना
+        # Server space khali rakhne ke liye local file hatana
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
 
 if __name__ == "__main__":
-    print("🚀 वेब सर्वर शुरू हो रहा है...")
+    print("🚀 Web server shuru ho raha hai...")
     keep_alive()
-    print("🤖 टेलीग्राम बॉट शुरू हो रहा है...")
+    print("🤖 Telegram bot shuru ho raha hai...")
     bot.run()
     
