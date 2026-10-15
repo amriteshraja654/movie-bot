@@ -1,4 +1,5 @@
 import os
+import asyncio
 from pyrogram import Client, filters
 import yt_dlp
 from flask import Flask
@@ -70,7 +71,8 @@ async def download_media(client, message):
                     info = info['entries'][0]
                 return ydl.prepare_filename(info)
 
-        file_path = await yt_dlp.asyncio.to_thread(run_ydl) if hasattr(yt_dlp, 'asyncio') else run_ydl()
+        # मानक asyncio.to_thread का उपयोग
+        file_path = await asyncio.to_thread(run_ydl)
 
         await status_msg.edit_text("📤 डाउनलोड पूरा हो गया है, अब टेलीग्राम पर फाइल भेज रहा हूँ...")
 
@@ -92,4 +94,4 @@ if __name__ == "__main__":
     keep_alive()
     print("🤖 टेलीग्राम बॉट शुरू हो रहा है...")
     bot.run()
-    
+
