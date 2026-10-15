@@ -1,6 +1,6 @@
 import asyncio
 
-# Python 3.11+ ke liye event loop setup
+# Python 3.11+ के लिए इवेंट लूप सेटअप
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
 
@@ -10,7 +10,7 @@ import yt_dlp
 from flask import Flask
 from threading import Thread
 
-# 1. Flask web server (Render ko live rakhne ke liye)
+# 1. Flask वेब सर्वर (Render को Live रखने के लिए)
 app = Flask(__name__)
 
 @app.route('/')
@@ -26,7 +26,7 @@ def keep_alive():
     t.daemon = True
     t.start()
 
-# 2. Telegram Bot configuration
+# 2. Telegram Bot कॉन्फ़िगरेशन
 API_ID = int(os.environ.get("API_ID", 0))
 API_HASH = os.environ.get("API_HASH", "")
 BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
@@ -41,24 +41,20 @@ bot = Client(
 
 @bot.on_message(filters.command("start"))
 async def start_command(client, message):
-    await message.reply_text("👋 Namaste! Aap kisi bhi Bollywood, Hollywood, Bhojpuri movie ya Web Series ka naam likhkar bhejein, main usey dhoondhakar aapke paas bhej dunga.")
+    await message.reply_text("👋 नमस्ते! किसी भी गाने, वीडियो या मूवी का **नाम** लिखकर भेजें, मैं उसे डाउनलोड करके आपके पास भेज दूंगा।")
 
 @bot.on_message(filters.text & ~filters.command("start"))
 async def download_media(client, message):
-    user_input = message.text.strip()
+    query = message.text.strip()
     
-    # Check karein ki link hai ya movie ka naam
-    if user_input.startswith(("http://", "https://")):
-        target = user_input
-        status_msg = await message.reply_text(f"⏳ Diye gaye link se download kiya ja raha hai...")
-    else:
-        # Naam se search karne ke liye smart query
-        target = f"ytsearch1:{user_input} full movie OR official trailer"
-        status_msg = await message.reply_text(f"🔍 '{user_input}' ko khoja aur download kiya ja raha hai...")
+    status_msg = await message.reply_text(f"🔍 '{query}' को खोजा और डाउनलोड किया जा रहा है...")
     
     file_path = None
     try:
         os.makedirs("downloads", exist_ok=True)
+        
+        # नाम से सर्च करके डाउनलोड करने की कमांड
+        search_target = f"ytsearch1:{query}"
         
         ydl_opts = {
             'format': 'best[ext=mp4]/best',
@@ -75,19 +71,19 @@ async def download_media(client, message):
         
         def run_ydl():
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(target, download=True)
+                info = ydl.extract_info(search_target, download=True)
                 if 'entries' in info:
                     if not info['entries']:
-                        raise Exception("Koi video nahi mila.")
+                        raise Exception("कोई वीडियो नहीं मिला।")
                     info = info['entries'][0]
                 return ydl.prepare_filename(info)
 
-        # Background mein file download hogi
+        # बैकग्राउंड में डाउनलोड प्रक्रिया
         file_path = await asyncio.to_thread(run_ydl)
 
-        await status_msg.edit_text("📤 Download pura ho gaya hai, ab Telegram par file bhej raha hoon...")
+        await status_msg.edit_text("📤 डाउनलोड पूरा हो गया है, अब टेलीग्राम पर फाइल भेज रहा हूँ...")
 
-        # Telegram par video bhejna
+        # टेलीग्राम पर वीडियो भेजना
         await client.send_video(
             chat_id=message.chat.id,
             video=file_path,
@@ -96,15 +92,15 @@ async def download_media(client, message):
         await status_msg.delete()
 
     except Exception as e:
-        await status_msg.edit_text(f"❌ Download karne mein samasya aayi:\n{e}")
+        await status_msg.edit_text(f"❌ डाउनलोड करने में समस्या आई:\n{e}")
     finally:
-        # Server space khali rakhne ke liye local file hatana
+        # सर्वर स्पेस खाली रखने के लिए लोकल फाइल हटाना
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
 
 if __name__ == "__main__":
-    print("🚀 Web server shuru ho raha hai...")
+    print("🚀 वेब सर्वर शुरू हो रहा है...")
     keep_alive()
-    print("🤖 Telegram bot shuru ho raha hai...")
+    print("🤖 टेलीग्राम बॉट शुरू हो रहा है...")
     bot.run()
     
