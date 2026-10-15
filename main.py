@@ -36,42 +36,39 @@ bot = Client(
 
 @bot.on_message(filters.command("start"))
 async def start_command(client, message):
-    await message.reply_text("👋 नमस्ते! किसी भी गाने या वीडियो का नाम लिखकर भेजें, मैं उसे डाउनलोड करके भेज दूंगा।")
+    await message.reply_text("👋 नमस्ते! Vegamovies या किसी भी मूवी वेबसाइट का **डायरेक्ट डाउनलोड लिंक** (जैसे PixelDrain या HubCloud का लिंक) भेजें, मैं उसे डाउनलोड करके फाइल भेज दूंगा।")
 
 @bot.on_message(filters.text & ~filters.command("start"))
 async def download_media(client, message):
-    query = message.text.strip()
-    status_msg = await message.reply_text(f"🔍 '{query}' को खोजा और डाउनलोड किया जा रहा है...")
+    url = message.text.strip()
+    
+    # चेक करें कि यूजर ने वैध लिंक भेजा है या नहीं
+    if not url.startswith(("http://", "https://")):
+        await message.reply_text("⚠️ कृपया केवल किसी वेबसाइट का **वैध डायरेक्ट लिंक (URL)** भेजें!")
+        return
+
+    status_msg = await message.reply_text("⏳ लिंक से वीडियो/मूवी डाउनलोड की जा रही है...")
     
     file_path = None
     try:
         os.makedirs("downloads", exist_ok=True)
-        
-        search_target = f"ytsearch1:{query}"
         
         ydl_opts = {
             'format': 'best[ext=mp4]/best',
             'outtmpl': 'downloads/%(title)s.%(ext)s',
             'quiet': True,
             'noplaylist': True,
-            'geo_bypass': True,
-            'extractor_args': {
-                'youtube': {
-                    'player_client': ['android', 'web']
-                }
-            }
+            'geo_bypass': True
         }
         
         def run_ydl():
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(search_target, download=True)
+                info = ydl.extract_info(url, download=True)
                 if 'entries' in info:
-                    if not info['entries']:
-                        raise Exception("कोई वीडियो नहीं मिला।")
                     info = info['entries'][0]
                 return ydl.prepare_filename(info)
 
-        # मानक asyncio.to_thread का उपयोग
+        # बैकग्राउंड में सुरक्षित डाउनलोड
         file_path = await asyncio.to_thread(run_ydl)
 
         await status_msg.edit_text("📤 डाउनलोड पूरा हो गया है, अब टेलीग्राम पर फाइल भेज रहा हूँ...")
@@ -86,6 +83,7 @@ async def download_media(client, message):
     except Exception as e:
         await status_msg.edit_text(f"❌ डाउनलोड करने में समस्या आई:\n{e}")
     finally:
+        # सर्वर स्पेस खाली रखने के लिए लोकल फाइल हटाना
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
 
@@ -94,4 +92,4 @@ if __name__ == "__main__":
     keep_alive()
     print("🤖 टेलीग्राम बॉट शुरू हो रहा है...")
     bot.run()
-
+    
