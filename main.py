@@ -1,9 +1,3 @@
-import asyncio
-
-# Python 3.11+ के लिए इवेंट लूप सेटअप
-loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
-
 import os
 from pyrogram import Client, filters
 import yt_dlp
@@ -41,19 +35,17 @@ bot = Client(
 
 @bot.on_message(filters.command("start"))
 async def start_command(client, message):
-    await message.reply_text("👋 नमस्ते! किसी भी गाने, वीडियो या मूवी का **नाम** लिखकर भेजें, मैं उसे डाउनलोड करके आपके पास भेज दूंगा।")
+    await message.reply_text("👋 नमस्ते! किसी भी गाने या वीडियो का नाम लिखकर भेजें, मैं उसे डाउनलोड करके भेज दूंगा।")
 
 @bot.on_message(filters.text & ~filters.command("start"))
 async def download_media(client, message):
     query = message.text.strip()
-    
     status_msg = await message.reply_text(f"🔍 '{query}' को खोजा और डाउनलोड किया जा रहा है...")
     
     file_path = None
     try:
         os.makedirs("downloads", exist_ok=True)
         
-        # नाम से सर्च करके डाउनलोड करने की कमांड
         search_target = f"ytsearch1:{query}"
         
         ydl_opts = {
@@ -78,12 +70,10 @@ async def download_media(client, message):
                     info = info['entries'][0]
                 return ydl.prepare_filename(info)
 
-        # बैकग्राउंड में डाउनलोड प्रक्रिया
-        file_path = await asyncio.to_thread(run_ydl)
+        file_path = await yt_dlp.asyncio.to_thread(run_ydl) if hasattr(yt_dlp, 'asyncio') else run_ydl()
 
         await status_msg.edit_text("📤 डाउनलोड पूरा हो गया है, अब टेलीग्राम पर फाइल भेज रहा हूँ...")
 
-        # टेलीग्राम पर वीडियो भेजना
         await client.send_video(
             chat_id=message.chat.id,
             video=file_path,
@@ -94,7 +84,6 @@ async def download_media(client, message):
     except Exception as e:
         await status_msg.edit_text(f"❌ डाउनलोड करने में समस्या आई:\n{e}")
     finally:
-        # सर्वर स्पेस खाली रखने के लिए लोकल फाइल हटाना
         if file_path and os.path.exists(file_path):
             os.remove(file_path)
 
